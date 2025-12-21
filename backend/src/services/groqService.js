@@ -5,7 +5,7 @@ class GroqService {
     this.client = new Groq({
       apiKey: process.env.GROQ_API_KEY,
     });
-    this.model = 'mixtral-8x7b-32768'; // Fast and capable model
+    this.model = 'llama3-8b-8192'; // Meta Llama 3.1 8B - fast and capable model
     this.maxTokens = 2048;
     this.temperature = 0.7;
   }
