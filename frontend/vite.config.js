@@ -5,5 +5,5 @@ export default defineConfig({
   plugins: [
     react()
   ],
-  base: '/ainelearningaid/'
+  base: process.env.NODE_ENV === 'production' ? '/' : '/ainelearningaid/'
 })
