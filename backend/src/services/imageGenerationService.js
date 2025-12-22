@@ -7,14 +7,12 @@ const cacheService = require('./cacheService');
 
 class ImageGenerationService {
   constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY;
-    if (!this.apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-    this.baseURL = 'https://api.openai.com/v1';
-    this.model = 'dall-e-3'; // Latest DALL-E model
-    this.size = '1024x1024'; // Default size for educational images
-    this.quality = 'standard'; // Quality setting
+    this.apiKey = process.env.GOOGLE_API_KEY;
+    this.projectId = process.env.GOOGLE_PROJECT_ID;
+    this.location = process.env.GOOGLE_LOCATION || 'us-central1';
+    this.baseURL = `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/imagen-3.0-generate-001:predict`;
+    this.model = 'imagen-3.0-generate-001';
+    this.aspectRatio = '1:1'; // Default aspect ratio
     this.usageCount = 0; // Basic usage tracking for cost monitoring
   }
 
@@ -26,6 +24,10 @@ class ImageGenerationService {
    * @returns {Promise<Object>} - Response object with image URL and metadata
    */
   async generateImage(prompt, subject, options = {}) {
+    if (!this.apiKey) {
+      throw new Error('GOOGLE_API_KEY environment variable is not set');
+    }
+
     const startTime = Date.now();
 
     try {
@@ -48,7 +50,7 @@ class ImageGenerationService {
       if (forbiddenWords.some(word => lowerPrompt.includes(word))) {
         throw new Error('Prompt contains inappropriate content');
       }
-      
+
       const hash = crypto.createHash('sha256').update(prompt + JSON.stringify(options)).digest('hex');
       const cachedFilename = cacheService.get(`image_${hash}`);
       if (cachedFilename) {
@@ -57,24 +59,29 @@ class ImageGenerationService {
           revisedPrompt: null,
           processing_time: 0,
           model: options.model || this.model,
-          size: options.size || this.size,
+          size: options.aspectRatio || this.aspectRatio,
           success: true,
           usage_count: this.usageCount,
           cost_estimate: 0,
           cached: true
         };
       }
+
+      const educationalPrompt = this.buildEducationalPrompt(subject, prompt);
+
       const requestBody = {
-        prompt: this.buildEducationalPrompt(subject, prompt),
-        model: options.model || this.model,
-        size: options.size || this.size,
-        quality: options.quality || this.quality,
-        n: 1, // Generate one image
+        instances: [{ prompt: educationalPrompt }],
+        parameters: {
+          aspectRatio: options.aspectRatio || this.aspectRatio,
+          sampleCount: 1,
+          personGeneration: 'allow_adult'
+        }
       };
 
-      const response = await axios.post(`${this.baseURL}/images/generations`, requestBody, {
+      const url = `${this.baseURL}?key=${this.apiKey}`;
+
+      const response = await axios.post(url, requestBody, {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
         timeout: 60000, // 60 second timeout for image generation
@@ -83,12 +90,13 @@ class ImageGenerationService {
       const processingTime = Date.now() - startTime;
       this.usageCount++; // Increment usage counter
 
-      const imageData = response.data.data[0];
+      const prediction = response.data.predictions[0];
+      const base64Data = prediction.bytesBase64Encoded;
+      const buffer = Buffer.from(base64Data, 'base64');
+
       const filename = `${hash}.jpg`;
-      // Download and compress image
+      // Compress image
       try {
-        const imageResponse = await axios.get(imageData.url, { responseType: 'arraybuffer', timeout: 60000 });
-        const buffer = Buffer.from(imageResponse.data);
         const compressedBuffer = await sharp(buffer)
           .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
           .jpeg({ quality: 80 })
@@ -98,19 +106,20 @@ class ImageGenerationService {
         fs.writeFileSync(filepath, compressedBuffer);
         // Cache the filename
         cacheService.set(`image_${hash}`, filename, 24 * 60 * 60 * 1000);
-      } catch (downloadError) {
-        console.error('Image download/storage error:', downloadError);
-        throw new Error('Failed to download and store image');
+      } catch (storageError) {
+        console.error('Image storage error:', storageError);
+        throw new Error('Failed to store image');
       }
+
       return {
         imageUrl: `/api/images/uploads/${filename}`,
-        revisedPrompt: imageData.revised_prompt,
+        revisedPrompt: null, // Imagen doesn't provide revised prompt
         processing_time: processingTime,
-        model: response.data.model || this.model,
-        size: requestBody.size,
+        model: this.model,
+        size: requestBody.parameters.aspectRatio,
         success: true,
         usage_count: this.usageCount,
-        cost_estimate: this.estimateCost(requestBody.size, requestBody.quality), // Basic cost estimation
+        cost_estimate: this.estimateCost(requestBody.parameters.aspectRatio), // Basic cost estimation
       };
 
     } catch (error) {
@@ -122,21 +131,19 @@ class ImageGenerationService {
         const status = error.response.status;
         const message = error.response.data?.error?.message || 'API request failed';
 
-        if (status === 401) {
-          throw new Error('Invalid OpenAI API key provided');
+        if (status === 401 || status === 403) {
+          throw new Error('Invalid Google API key or insufficient permissions');
         } else if (status === 429) {
-          throw new Error('OpenAI API rate limit exceeded. Please try again later.');
+          throw new Error('Google API rate limit exceeded. Please try again later.');
         } else if (status === 400) {
           throw new Error(`Bad request: ${message}`);
-        } else if (status === 403) {
-          throw new Error('OpenAI API access forbidden. Check your account and billing.');
         } else {
-          throw new Error(`OpenAI API error (${status}): ${message}`);
+          throw new Error(`Google API error (${status}): ${message}`);
         }
       } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new Error('Unable to connect to OpenAI API. Please check your internet connection.');
+        throw new Error('Unable to connect to Google API. Please check your internet connection.');
       } else if (error.code === 'ETIMEDOUT') {
-        throw new Error('OpenAI API request timed out. Image generation may take longer than expected.');
+        throw new Error('Google API request timed out. Image generation may take longer than expected.');
       } else {
         throw new Error(`Image generation error: ${error.message}`);
       }
@@ -172,15 +179,9 @@ class ImageGenerationService {
    * @param {string} quality - Image quality
    * @returns {number} - Estimated cost in USD
    */
-  estimateCost(size, quality) {
-    // DALL-E-3 pricing (as of 2024)
-    const basePrices = {
-      '1024x1024': quality === 'hd' ? 0.08 : 0.04,
-      '1024x1792': quality === 'hd' ? 0.12 : 0.06,
-      '1792x1024': quality === 'hd' ? 0.12 : 0.06,
-    };
-
-    return basePrices[size] || 0.04; // Default to standard 1024x1024
+  estimateCost(aspectRatio) {
+    // Imagen pricing (as of 2024) - approximately $0.04 per image
+    return 0.04;
   }
 
   /**
@@ -218,10 +219,10 @@ class ImageGenerationService {
     const available = await this.isAvailable();
 
     return {
-      service: 'OpenAI DALL-E Image Generation',
+      service: 'Google Imagen Image Generation',
       available,
       model: this.model,
-      default_size: this.size,
+      default_aspect_ratio: this.aspectRatio,
       usage_stats: this.getUsageStats(),
       timestamp: new Date().toISOString(),
     };
