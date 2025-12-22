@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, Loader2 } from 'lucide-react';
-import { apiService } from '../services/api';
 
 interface Message {
   id: number;
