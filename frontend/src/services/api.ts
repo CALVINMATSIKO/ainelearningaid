@@ -123,6 +123,12 @@ class ApiService {
     return response.data!;
   }
 
+  // Generic GET method
+  async get<T>(endpoint: string): Promise<T> {
+    const response = await this.request<T>(endpoint);
+    return response.data!;
+  }
+
   async updateProfile(updates: any): Promise<any> {
     const response = await this.request<any>('/auth/profile', {
       method: 'PUT',

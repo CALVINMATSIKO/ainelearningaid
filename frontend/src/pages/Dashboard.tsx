@@ -1,39 +1,108 @@
-import React from 'react';
-import { BookOpen, MessageSquare, TrendingUp, Clock, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, MessageSquare, TrendingUp, Clock, Plus, Loader2 } from 'lucide-react';
 import { SUBJECTS } from '../../../shared/constants/index';
+import { apiService as api } from '../services/api';
+
+interface DashboardStats {
+  questionsAsked: number;
+  subjectsCovered: number;
+  averageScore: number;
+  studyStreak: number;
+}
+
+interface RecentQuestion {
+  id: number;
+  subject: string;
+  question: string;
+  timestamp: string;
+  status: string;
+}
+
+interface Competency {
+  name: string;
+  progress: number;
+  color?: string;
+}
 
 const Dashboard: React.FC = () => {
-  // Mock data - in real app, this would come from API
-  const recentQuestions = [
-    {
-      id: 1,
-      subject: 'Mathematics',
-      question: 'How do I solve quadratic equations?',
-      timestamp: '2 hours ago',
-      status: 'answered'
-    },
-    {
-      id: 2,
-      subject: 'English',
-      question: 'What is the difference between active and passive voice?',
-      timestamp: '1 day ago',
-      status: 'answered'
-    },
-    {
-      id: 3,
-      subject: 'Biology',
-      question: 'Explain the process of photosynthesis',
-      timestamp: '3 days ago',
-      status: 'answered'
-    }
-  ];
+  const [stats, setStats] = useState<DashboardStats>({
+    questionsAsked: 0,
+    subjectsCovered: 0,
+    averageScore: 0,
+    studyStreak: 0
+  });
+  const [recentQuestions, setRecentQuestions] = useState<RecentQuestion[]>([]);
+  const [competencies, setCompetencies] = useState<Competency[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const competencies = [
-    { name: 'Critical Thinking', progress: 75, color: 'bg-blue-500' },
-    { name: 'Problem Solving', progress: 60, color: 'bg-green-500' },
-    { name: 'Communication', progress: 85, color: 'bg-purple-500' },
-    { name: 'Research Skills', progress: 45, color: 'bg-yellow-500' }
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const statsRes = await api.get<DashboardStats>('/dashboard/stats');
+        const questionsRes = await api.get<RecentQuestion[]>('/dashboard/questions');
+        const competenciesRes = await api.get<Competency[]>('/dashboard/competencies');
+
+        setStats(statsRes);
+        setRecentQuestions(questionsRes);
+        setCompetencies(competenciesRes.map((comp: Competency) => ({
+          ...comp,
+          color: getCompetencyColor(comp.name)
+        })));
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        // Fallback to mock data if API fails
+        setStats({
+          questionsAsked: 24,
+          subjectsCovered: 8,
+          averageScore: 85,
+          studyStreak: 7
+        });
+        setRecentQuestions([
+          {
+            id: 1,
+            subject: 'Mathematics',
+            question: 'How do I solve quadratic equations?',
+            timestamp: '2 hours ago',
+            status: 'answered'
+          },
+          {
+            id: 2,
+            subject: 'English',
+            question: 'What is the difference between active and passive voice?',
+            timestamp: '1 day ago',
+            status: 'answered'
+          },
+          {
+            id: 3,
+            subject: 'Biology',
+            question: 'Explain the process of photosynthesis',
+            timestamp: '3 days ago',
+            status: 'answered'
+          }
+        ]);
+        setCompetencies([
+          { name: 'Critical Thinking', progress: 75, color: 'bg-blue-500' },
+          { name: 'Problem Solving', progress: 60, color: 'bg-green-500' },
+          { name: 'Communication', progress: 85, color: 'bg-purple-500' },
+          { name: 'Research Skills', progress: 45, color: 'bg-yellow-500' }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const getCompetencyColor = (name: string): string => {
+    const colors: Record<string, string> = {
+      'Critical Thinking': 'bg-blue-500',
+      'Problem Solving': 'bg-green-500',
+      'Communication': 'bg-purple-500',
+      'Research Skills': 'bg-yellow-500'
+    };
+    return colors[name] || 'bg-gray-500';
+  };
 
   const subjectIcons: Record<string, string> = {
     'Mathematics': '🔢',
@@ -72,11 +141,17 @@ const Dashboard: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <MessageSquare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                {loading ? (
+                  <Loader2 className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-spin" />
+                ) : (
+                  <MessageSquare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                )}
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Questions Asked</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">24</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {loading ? '...' : stats.questionsAsked}
+                </p>
               </div>
             </div>
           </div>
@@ -88,7 +163,9 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Subjects Covered</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">8</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {loading ? '...' : stats.subjectsCovered}
+                </p>
               </div>
             </div>
           </div>
@@ -100,7 +177,9 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Score</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">85%</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {loading ? '...' : `${stats.averageScore}%`}
+                </p>
               </div>
             </div>
           </div>
@@ -112,7 +191,9 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Study Streak</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">7 days</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {loading ? '...' : `${stats.studyStreak} days`}
+                </p>
               </div>
             </div>
           </div>
@@ -150,26 +231,36 @@ const Dashboard: React.FC = () => {
                 Recent Questions
               </h2>
               <div className="space-y-4">
-                {recentQuestions.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                          {item.subject}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {item.timestamp}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        {item.question}
-                      </p>
-                    </div>
-                    <button className="ml-4 px-3 py-1 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition-colors">
-                      View Answer
-                    </button>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
                   </div>
-                ))}
+                ) : recentQuestions.length > 0 ? (
+                  recentQuestions.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                            {item.subject}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {item.timestamp}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          {item.question}
+                        </p>
+                      </div>
+                      <button className="ml-4 px-3 py-1 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition-colors">
+                        View Answer
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                    No questions asked yet. Start learning!
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -181,24 +272,30 @@ const Dashboard: React.FC = () => {
                 Competency Progress
               </h2>
               <div className="space-y-4">
-                {competencies.map((competency, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {competency.name}
-                      </span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {competency.progress}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${competency.color} transition-all duration-300`}
-                        style={{ width: `${competency.progress}%` }}
-                      ></div>
-                    </div>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
                   </div>
-                ))}
+                ) : (
+                  competencies.map((competency, index) => (
+                    <div key={index}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {competency.name}
+                        </span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {competency.progress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${competency.color || 'bg-gray-500'} transition-all duration-300`}
+                          style={{ width: `${competency.progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
               <button className="mt-6 w-full py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
                 View Full Report
