@@ -27,6 +27,8 @@ const {
 const authRoutes = require('./routes/auth');
 const aiAnsweringRoutes = require('./routes/aiAnswering');
 const imageGenerationRoutes = require('./routes/imageGeneration');
+const dashboardRoutes = require('./routes/dashboard');
+const chatRoutes = require('./routes/chat');
 
 // Import database
 const { initDatabase } = require('./config/database');
@@ -123,6 +125,8 @@ app.use('/api/images/generate', imageGenerationLimit);
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiAnsweringRoutes);
 app.use('/api/images', imageGenerationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/chat', chatRoutes);
 // Serve uploaded images
 app.use('/api/images/uploads', express.static(path.join(__dirname, '../../uploads/images')));
 

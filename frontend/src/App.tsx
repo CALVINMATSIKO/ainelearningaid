@@ -10,6 +10,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Question = lazy(() => import('./pages/Question'));
 const Resources = lazy(() => import('./pages/Resources'));
+const Chat = lazy(() => import('./pages/Chat'));
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -23,6 +24,8 @@ function App() {
         return <Dashboard />;
       case 'question':
         return <Question />;
+      case 'chat':
+        return <Chat />;
       case 'resources':
         return <Resources />;
       default:

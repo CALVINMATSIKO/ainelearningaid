@@ -80,6 +80,74 @@ class GroqService {
   }
 
   /**
+   * Generate a chat response using Groq AI with conversation history
+   * @param {Array} messages - Array of message objects with role and content
+   * @param {Object} options - Additional options for the request
+   * @returns {Promise<Object>} - Response object with content and metadata
+   */
+  async generateChatResponse(messages, options = {}) {
+    const startTime = Date.now();
+
+    try {
+      // Prepare messages with system prompt
+      const systemMessage = {
+        role: 'system',
+        content: 'You are an expert educational assistant for Ugandan Competency-Based Assessment (CBA) curriculum. Provide clear, structured responses aligned with UNEB standards. Engage in natural conversation while maintaining educational value.'
+      };
+
+      const chatMessages = [systemMessage, ...messages];
+
+      const completion = await this.client.chat.completions.create({
+        messages: chatMessages,
+        model: options.model || this.model,
+        temperature: options.temperature || this.temperature,
+        max_tokens: options.maxTokens || this.maxTokens,
+        top_p: 1,
+        stream: false,
+      });
+
+      const processingTime = Date.now() - startTime;
+      const response = completion.choices[0]?.message?.content;
+
+      if (!response) {
+        throw new Error('No response generated from Groq AI');
+      }
+
+      return {
+        content: response,
+        tokens_used: completion.usage?.total_tokens || 0,
+        processing_time: processingTime,
+        model: completion.model,
+        success: true
+      };
+
+    } catch (error) {
+      console.error('Groq AI chat service error:', error);
+
+      // Handle different types of errors
+      if (error.response) {
+        // API error response
+        const status = error.response.status;
+        const message = error.response.data?.error?.message || 'API request failed';
+
+        if (status === 401) {
+          throw new Error('Invalid API key provided');
+        } else if (status === 429) {
+          throw new Error('Rate limit exceeded. Please try again later.');
+        } else if (status === 400) {
+          throw new Error(`Bad request: ${message}`);
+        } else {
+          throw new Error(`API error (${status}): ${message}`);
+        }
+      } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        throw new Error('Unable to connect to Groq API. Please check your internet connection.');
+      } else {
+        throw new Error(`AI service error: ${error.message}`);
+      }
+    }
+  }
+
+  /**
    * Generate a CBA-structured response
    * @param {string} question - The student's question
    * @param {Object} context - Context including subject, grade level, competencies

@@ -15,6 +15,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange }) =>
     { id: 'home', label: 'Home', icon: Home },
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'question', label: 'Ask Question', icon: MessageSquare },
+    { id: 'chat', label: 'AI Chat', icon: MessageSquare },
     { id: 'resources', label: 'Resources', icon: FileText },
   ];
 
