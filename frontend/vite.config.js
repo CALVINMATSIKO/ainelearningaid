@@ -7,6 +7,9 @@ export default defineConfig({
     react()
   ],
   base: process.env.VERCEL ? '/' : '/ainelearningaid/',
+  build: {
+    outDir: process.env.VERCEL ? '../dist' : 'dist'
+  },
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, '../../shared')
