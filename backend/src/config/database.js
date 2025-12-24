@@ -16,7 +16,7 @@ if (DATABASE_URL) {
 } else {
   // Use SQLite
   const sqlite3 = require('sqlite3').verbose();
-  const DB_PATH = path.join(__dirname, '../../database/aine_learning_aid.db');
+  const DB_PATH = process.env.VERCEL ? '/tmp/aine_learning_aid.db' : path.join(__dirname, '../../database/aine_learning_aid.db');
   db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
       console.error('Error opening database:', err.message);
