@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageCircle, Loader2, Plus, Menu, X, Copy, Trash2, MessageSquare } from 'lucide-react';
+import { Send, MessageCircle, Loader2, Plus, Menu, Copy, Trash2, MessageSquare } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
 interface Message {
