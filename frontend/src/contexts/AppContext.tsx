@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { Question, Answer } from '../../../shared/types/index';
+import apiService from '../services/api';
 
 interface AppState {
   questions: Question[];
@@ -84,40 +85,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      // Mock API call - replace with actual API service
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await apiService.submitQuestion(questionData);
 
-      const mockQuestion: Question = {
-        id: Date.now(),
-        user_id: 1,
-        subject: questionData.subject,
-        question_type: questionData.question_type,
-        content: questionData.content,
-        grade_level: questionData.grade_level,
-        competencies: questionData.competencies || [],
-        context: questionData.context,
-        created_at: new Date().toISOString(),
-      };
-
-      const mockAnswer: Answer = {
-        id: Date.now(),
-        question_id: mockQuestion.id,
-        user_id: 1,
-        content: {
-          introduction: "This is a mock introduction for the answer.",
-          elaboration: "This is detailed explanation content.",
-          conclusion: "This is the conclusion.",
-          competencies_addressed: ["Critical Thinking", "Problem Solving"],
-          references: ["UNEB Syllabus 2023"]
-        },
-        tokens_used: 150,
-        processing_time: 2.3,
-        created_at: new Date().toISOString(),
-      };
-
-      dispatch({ type: 'ADD_QUESTION', payload: mockQuestion });
-      dispatch({ type: 'SET_CURRENT_QUESTION', payload: mockQuestion });
-      dispatch({ type: 'SET_CURRENT_ANSWER', payload: mockAnswer });
+      dispatch({ type: 'ADD_QUESTION', payload: result.question });
+      dispatch({ type: 'SET_CURRENT_QUESTION', payload: result.question });
+      dispatch({ type: 'SET_CURRENT_ANSWER', payload: result.answer });
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'An error occurred' });
     } finally {

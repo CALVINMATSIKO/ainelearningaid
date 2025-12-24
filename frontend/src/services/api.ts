@@ -1,6 +1,7 @@
 import { ApiResponse, Question, Answer } from '../../../shared/types/index';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
+console.log('API_BASE_URL:', API_BASE_URL);
 
 class ApiService {
   private getSessionId(): string {
@@ -65,11 +66,19 @@ class ApiService {
     grade_level: string;
     competencies?: string[];
     context?: string;
-  }): Promise<Question> {
-    const response = await this.request<Question>('/ai/answer-question', {
+  }): Promise<{ question: Question; answer: Answer; analysis: any; competency_check: any }> {
+    const body = {
+      question: questionData.content,
+      subject: questionData.subject,
+      grade_level: questionData.grade_level,
+      context: questionData.context,
+    };
+    console.log('Submitting question:', body);
+    const response = await this.request<{ question: Question; answer: Answer; analysis: any; competency_check: any }>('/ai/ask', {
       method: 'POST',
-      body: JSON.stringify(questionData),
+      body: JSON.stringify(body),
     });
+    console.log('API response:', response);
     return response.data!;
   }
 
