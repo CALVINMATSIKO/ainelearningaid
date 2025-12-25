@@ -1,7 +1,6 @@
-import { ApiResponse, Question, Answer } from '../../../shared/types/index';
+import { ApiResponse, Question, Answer, CBAResponse, Subject, QuestionType } from '../../../shared/types/index';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
-console.log('API_BASE_URL:', API_BASE_URL);
 
 class ApiService {
   private getSessionId(): string {
@@ -110,7 +109,9 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    return response.data!;
+    const result = response.data!;
+    localStorage.setItem('auth_token', result.token);
+    return result;
   }
 
   async register(userData: {
@@ -124,7 +125,9 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    return response.data!;
+    const result = response.data!;
+    localStorage.setItem('auth_token', result.token);
+    return result;
   }
 
   async getCurrentUser(): Promise<any> {
