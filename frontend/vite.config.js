@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [
     react()
   ],
-  base: '/',
+  base: '/ainelearningaid/',
   build: {
-    outDir: '../dist'
+    outDir: 'dist'
   },
   resolve: {
     alias: {
