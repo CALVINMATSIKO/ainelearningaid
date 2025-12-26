@@ -6,21 +6,14 @@ export default defineConfig({
   plugins: [
     react()
   ],
-  base: process.env.VERCEL ? '/' : '/ainelearningaid/',
+  base: '/',
   build: {
-    outDir: process.env.VERCEL ? '../dist' : 'dist'
+    outDir: '../dist'
   },
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, '../../shared')
     }
   },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true
-      }
-    }
-  }
+  // No backend proxy needed for static app
 })
